@@ -34,6 +34,10 @@ async def main():
 
     print("\nFINAL RESPONSE\n")
     print(result.final_output)
+    print("\nTYPE:")
+    print(type(result.final_output))
+    print("\nMISSING SKILLS:")
+    print(result.final_output.missing_skills)
 
 
 if __name__ == "__main__":
