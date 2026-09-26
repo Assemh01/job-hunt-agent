@@ -85,8 +85,3 @@ class FitScore(BaseModel):
     required_score:float
     preferred_score:float
     bonus_score:float
-
-class MatchLevel(str, Enum):
-    FULL = "full"
-    PARTIAL = "partial"
-    NOT_EVIDENCED = "not_evidenced"

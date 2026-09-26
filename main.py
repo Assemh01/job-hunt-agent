@@ -31,8 +31,7 @@ job_description = """
     - Must be legally authorized to work in the United States.
     - Must be able to work from our Detroit office three days per week.
 
-    Nice to have:
-    - AWS Certified Machine Learning certification.
+
     """
 
 async def main():

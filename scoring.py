@@ -26,7 +26,7 @@ def calculate_group_score(assessments, match_values):
     score = (total / len(assessments)) * 100
     return score
 
-def calculate_resume_score(assessment):
+def calculate_fit_score(assessment, match_values):
     required = []
     preferred = []
     bonus = []
@@ -41,51 +41,41 @@ def calculate_resume_score(assessment):
         elif item.requirement.priority == RequirementPriority.BONUS:
             bonus.append(item)
 
-    required_score = calculate_group_score(required, RESUME_MATCH_VALUES)
-    preferred_score = calculate_group_score(preferred, RESUME_MATCH_VALUES)
-    bonus_score = calculate_group_score(bonus, RESUME_MATCH_VALUES)
+    required_score = calculate_group_score(required, match_values)
+    preferred_score = calculate_group_score(preferred, match_values)
+    bonus_score = calculate_group_score(bonus, match_values)
 
-    final_required = (required_score * REQUIRED_WEIGHT)
-    final_preferred = (preferred_score * PREFERRED_WEIGHT)
-    final_bonus = (bonus_score * BONUS_WEIGHT)
+    active_weight = 0.0
 
-    resume_score = final_required + final_preferred + final_bonus
+    if required:
+        active_weight += REQUIRED_WEIGHT
+
+    if preferred:
+        active_weight += PREFERRED_WEIGHT
+
+    if bonus:
+        active_weight += BONUS_WEIGHT
+
+    final_required = required_score * REQUIRED_WEIGHT
+    final_preferred = preferred_score * PREFERRED_WEIGHT
+    final_bonus = bonus_score * BONUS_WEIGHT
+
+    weighted_score = final_required + final_preferred + final_bonus
+
+    if active_weight == 0:
+        fit_score = 0.0
+    else:
+        fit_score = weighted_score/active_weight
 
     return FitScore(
-        overall_score= resume_score,
+        overall_score= fit_score,
         required_score= required_score,
         preferred_score=preferred_score,
         bonus_score=bonus_score,
     )
+
+def calculate_resume_score(assessment):
+    return calculate_fit_score(assessment, RESUME_MATCH_VALUES)
 
 def calculate_candidate_score(assessment):
-    required = []
-    preferred = []
-    bonus = []
-
-    for item in assessment.assessments:
-        if item.requirement.hard_gate:
-            continue
-        if item.requirement.priority == RequirementPriority.REQUIRED:
-            required.append(item)
-        elif item.requirement.priority == RequirementPriority.PREFERRED:
-            preferred.append(item)
-        elif item.requirement.priority == RequirementPriority.BONUS:
-            bonus.append(item)
-
-    required_score = calculate_group_score(required, CANDIDATE_MATCH_VALUES)
-    preferred_score = calculate_group_score(preferred, CANDIDATE_MATCH_VALUES)
-    bonus_score = calculate_group_score(bonus, CANDIDATE_MATCH_VALUES)
-
-    final_required = (required_score * REQUIRED_WEIGHT)
-    final_preferred = (preferred_score * PREFERRED_WEIGHT)
-    final_bonus = (bonus_score * BONUS_WEIGHT)
-
-    candidate_score = final_required + final_preferred + final_bonus
-
-    return FitScore(
-        overall_score= candidate_score,
-        required_score= required_score,
-        preferred_score=preferred_score,
-        bonus_score=bonus_score,
-    )
+    return calculate_fit_score(assessment, CANDIDATE_MATCH_VALUES)
