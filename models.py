@@ -79,3 +79,14 @@ class CandidateRequirementAssessment(BaseModel):
 
 class CandidateAssessment(BaseModel):
     assessments: list[CandidateRequirementAssessment] = Field(default_factory=list)
+
+class FitScore(BaseModel):
+    overall_score:float
+    required_score:float
+    preferred_score:float
+    bonus_score:float
+
+class MatchLevel(str, Enum):
+    FULL = "full"
+    PARTIAL = "partial"
+    NOT_EVIDENCED = "not_evidenced"

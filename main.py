@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from assessment_utils import get_unresolved_requirements
 import json
 from clarification_utils import collect_answers
+from scoring import calculate_resume_score, calculate_candidate_score
 
 load_dotenv()
 
@@ -59,9 +60,13 @@ async def main():
     )
 
     assessment = resume_result.final_output
+    resume_score = calculate_resume_score(assessment)
 
     print("\n === RESUME ASSESSMENT ===")
     print(assessment.model_dump(mode="json"))
+
+    print("\n=== RESUME FIT SCORE ===")
+    print(resume_score.model_dump())
 
     unresolved = get_unresolved_requirements(assessment)
 
@@ -121,8 +126,13 @@ async def main():
 
     candidate_assessment = candidate_result.final_output
 
+    candidate_score = calculate_candidate_score(candidate_assessment)
+
     print("\n=== CANDIDATE ASSESSMENT ===")
     print(candidate_assessment.model_dump(mode="json"))
+
+    print("\n=== CANDIDATE FIT SCORE ===")
+    print(candidate_score.model_dump())
 
 if __name__ == "__main__":
     asyncio.run(main())
