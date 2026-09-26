@@ -5,8 +5,9 @@ from models import (
     RequirementAssessment,
     ResumeAssessment,
     MatchLevel,
+    HardGateStatus
 )
-
+from assessment_utils import evaluate_hard_gates
 from scoring import calculate_resume_score
 import pytest
 from models import CandidateRequirementAssessment, CandidateAssessment, CandidateMatch
@@ -192,3 +193,48 @@ def test_candidate_score_uses_candidate_matches():
 
     assert score.required_score == 75.0
     assert score.overall_score == 75.0
+
+def test_hard_gate_statuses():
+    work_auth_requirement = JobRequirement(
+        name="Work Authorization",
+        description="Must be legally authorized to work in the United States.",
+        priority=RequirementPriority.REQUIRED,
+        type=RequirementType.ELIGIBILITY,
+        hard_gate=True,
+    )
+
+    office_requirement = JobRequirement(
+        name="Detroit Office Attendance",
+        description="Must be able to work from the Detroit office three days per week.",
+        priority=RequirementPriority.REQUIRED,
+        type=RequirementType.LOCATION,
+        hard_gate=True,
+    )
+
+    work_auth_assessment = CandidateRequirementAssessment(
+        requirement=work_auth_requirement,
+        match=CandidateMatch.SATISFIED,
+        evidence=["Candidate confirmed U.S. work authorization."],
+        reasoning="Candidate meets the work authorization requirement.",
+    )
+
+    office_assessment = CandidateRequirementAssessment(
+        requirement=office_requirement,
+        match=CandidateMatch.NOT_SATISFIED,
+        evidence=["Candidate cannot work from the Detroit office three days per week."],
+        reasoning="Candidate does not meet the office attendance requirement.",
+    )
+
+    candidate_assessment = CandidateAssessment(
+        assessments=[
+            work_auth_assessment,
+            office_assessment,
+        ]
+    )
+
+    result = evaluate_hard_gates(candidate_assessment)
+
+    assert len(result.gates) == 2
+
+    assert result.gates[0].status == HardGateStatus.SATISFIED
+    assert result.gates[1].status == HardGateStatus.NOT_SATISFIED

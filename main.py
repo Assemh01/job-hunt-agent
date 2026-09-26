@@ -2,7 +2,7 @@ import asyncio
 from agents import Runner
 from agent import requirements_agent, resume_agent, clarification_agent, candidate_agent
 from dotenv import load_dotenv
-from assessment_utils import get_unresolved_requirements
+from assessment_utils import get_unresolved_requirements, evaluate_hard_gates
 import json
 from clarification_utils import collect_answers
 from scoring import calculate_resume_score, calculate_candidate_score
@@ -125,6 +125,7 @@ async def main():
     )
 
     candidate_assessment = candidate_result.final_output
+    hard_gate_result = evaluate_hard_gates(candidate_assessment)
 
     candidate_score = calculate_candidate_score(candidate_assessment)
 
@@ -133,6 +134,10 @@ async def main():
 
     print("\n=== CANDIDATE FIT SCORE ===")
     print(candidate_score.model_dump())
+
+    print("\n=== HARD GATES ===")
+    for gate in hard_gate_result.gates:
+        print(f"{gate.requirement.name}: {gate.status.value}")
 
 if __name__ == "__main__":
     asyncio.run(main())

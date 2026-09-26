@@ -85,3 +85,18 @@ class FitScore(BaseModel):
     required_score:float
     preferred_score:float
     bonus_score:float
+
+class HardGateStatus(str, Enum):
+    SATISFIED = "satisfied"
+    NOT_SATISFIED = "not_satisfied"
+    UNKNOWN = "unknown"
+
+
+class HardGateAssessment(BaseModel):
+    requirement: JobRequirement
+    status: HardGateStatus
+    evidence: list[str] = Field(default_factory=list)
+    reasoning: str
+
+class HardGateResult(BaseModel):
+    gates: list[HardGateAssessment] = Field(default_factory=list)
