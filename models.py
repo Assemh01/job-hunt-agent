@@ -23,9 +23,17 @@ class JobRequirement(BaseModel):
     type: RequirementType
     hard_gate: bool = False
 
-class JobRequirements(BaseModel):
+class JobInfo(BaseModel):
+    company_name: str | None = None
     job_title: str | None = None
-    requirements: list[JobRequirement] = Field(default_factory=list)
+    location: str | None = None
+    salary: str | None = None
+    employment_type: str | None = None
+    workplace_type: str | None = None
+
+class JobRequirements(BaseModel):
+    job_info = JobInfo
+    requirements: list[JobRequirement]
 
 class MatchLevel(str, Enum):
     FULL = "full"

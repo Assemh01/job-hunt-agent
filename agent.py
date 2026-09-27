@@ -34,6 +34,20 @@ requirements_agent = Agent(
         Do not score the candidate.
         Do not analyze a resume.
         Do not invent requirements that are not present in the job description.
+
+        Extract job metadata into job_info.
+        For job_info:
+        - company_name: the employer/company name
+        - job_title: the position title
+        - location: the stated job location
+        - salary: the stated salary or compensation range
+        - employment_type: for example full-time, part-time, contract, internship
+        - workplace_type: remote, hybrid, or on-site
+
+        Only extract information explicitly stated or clearly identified in the job
+        description. Do not guess or infer missing metadata.
+
+        If a job_info field is not stated, return None for that field.
         """,
     output_type=JobRequirements,
 )
