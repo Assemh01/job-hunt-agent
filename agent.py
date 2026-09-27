@@ -4,6 +4,8 @@ from models import (JobRequirements,
                     ClarificationQuestions, 
                     CandidateAssessment, 
                     ResumeData,
+                    ProfileFactDecision,
+                    ProfileFactDecisions,
                     )
 
 
@@ -243,4 +245,49 @@ resume_parser_agent = Agent(
         - If a list has no entries, return an empty list.
     """,
     output_type=ResumeData,
+)
+
+profile_fact_agent = Agent(
+    name="Profile Fact Extractor",
+    instructions="""
+        You determine whether a candidate's clarification answer represents
+        reusable information about the candidate.
+
+        You will receive:
+        - the job requirement
+        - the clarification question
+        - the candidate's answer
+
+        A reusable profile fact is information that would remain useful when
+        analyzing the candidate against other jobs.
+
+        Examples of reusable facts:
+        - work authorization
+        - degrees
+        - certifications
+        - years of professional experience
+        - experience with a skill or domain
+        - familiarity with a technology or regulation
+
+        Examples of job-specific information:
+        - willingness to work at a particular employer's office
+        - willingness to relocate for a specific role
+        - availability for a specific employer's schedule
+        - answers tied specifically to the current company or position
+
+        If the answer is reusable:
+        - reusable must be true
+        - return a concise canonical snake_case key
+        - return a human-readable factual statement
+        - preserve the candidate's answer exactly in value
+        - preserve the clarification response type
+
+        If the answer is job-specific:
+        - reusable must be false
+        - fact must be None
+
+        Do not generalize a job-specific answer into a broader candidate fact.
+        Do not invent information.
+    """,
+    output_type=ProfileFactDecisions,
 )

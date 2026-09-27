@@ -124,6 +124,7 @@ class JobAnalysisRequest(BaseModel):
     job_description: str
 
 class ClarificationSubmission(BaseModel):
+    profile_id: int
     analysis: JobAnalysisResult
     answers: ClarificationAnswers
 
@@ -159,3 +160,17 @@ class ResumeData(BaseModel):
     experience: list[ResumeExperience] = Field(default_factory=list)
     education: list[ResumeEducation] = Field(default_factory=list)
     certifications: list[str] = Field(default_factory=list)
+
+class ProfileFact(BaseModel):
+    key: str
+    statement: str
+    value: bool | int | float | str
+    response_type: QuestionType
+
+
+class ProfileFactDecision(BaseModel):
+    reusable: bool
+    fact: ProfileFact | None = None
+
+class ProfileFactDecisions(BaseModel):
+    decisions: list[ProfileFactDecision] = Field(default_factory=list)
