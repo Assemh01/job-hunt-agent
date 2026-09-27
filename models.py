@@ -135,3 +135,27 @@ class ProfileResponse(BaseModel):
     name: str
     resume_filename: str | None = None
     has_resume: bool = False
+
+class ResumeExperience(BaseModel):
+    company: str | None = None
+    title: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    description: list[str] = Field(default_factory=list)
+
+class ResumeEducation(BaseModel):
+    institution: str | None = None
+    degree: str | None = None
+    field_of_study: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+
+class ResumeData(BaseModel):
+    name: str | None = None
+    location: str | None = None
+    summary: str | None = None
+
+    skills: list[str] = Field(default_factory=list)
+    experience: list[ResumeExperience] = Field(default_factory=list)
+    education: list[ResumeEducation] = Field(default_factory=list)
+    certifications: list[str] = Field(default_factory=list)

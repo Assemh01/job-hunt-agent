@@ -1,5 +1,10 @@
 from agents import Agent
-from models import JobRequirements,ResumeAssessment, ClarificationQuestions, CandidateAssessment
+from models import (JobRequirements,
+                    ResumeAssessment, 
+                    ClarificationQuestions, 
+                    CandidateAssessment, 
+                    ResumeData,
+                    )
 
 
 requirements_agent = Agent(
@@ -197,4 +202,45 @@ candidate_agent = Agent(
         - Do not calculate a fit score.
         - Do not make an application recommendation.""",
         output_type=CandidateAssessment
+)
+
+resume_parser_agent = Agent(
+    name="Resume Parser",
+    instructions="""
+        You extract structured candidate information from resume text.
+
+        Extract only information explicitly supported by the resume.
+
+        Extract:
+        - candidate name
+        - candidate location
+        - professional summary, if present
+        - skills
+        - work experience
+        - education
+        - certifications
+
+        For work experience:
+        - company
+        - title
+        - start date
+        - end date
+        - description/bullet points
+
+        For education:
+        - institution
+        - degree
+        - field of study
+        - start date
+        - end date
+
+        Important:
+        - Do not infer missing information.
+        - Do not calculate years of experience.
+        - Do not rewrite qualifications into stronger claims.
+        - Preserve dates as stated in the resume.
+        - If a scalar field is not present, return None.
+        - If a list has no entries, return an empty list.
+    """,
+    output_type=ResumeData,
 )
