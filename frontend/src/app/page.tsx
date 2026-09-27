@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useId,
   useState,
   type ReactNode,
 } from "react";
@@ -536,6 +537,8 @@ function ProgressRing({
 }) {
   const [animatedScore, setAnimatedScore] = useState(0);
 
+  const filterId = useId().replace(/:/g, "");
+
   const safeScore = Math.max(
     0,
     Math.min(100, score)
@@ -580,8 +583,22 @@ function ProgressRing({
         <svg
           width={size}
           height={size}
-          className="-rotate-90"
+          className="-rotate-90 overflow-visible"
         >
+          <defs>
+            <filter
+              id={filterId}
+              x="-50%"
+              y="-50%"
+              width="200%"
+              height="200%"
+            >
+              <feGaussianBlur
+                stdDeviation={primary ? 5 : 4}
+              />
+            </filter>
+          </defs>
+
           <circle
             cx={size / 2}
             cy={size / 2}
@@ -597,15 +614,15 @@ function ProgressRing({
             r={radius}
             fill="transparent"
             stroke={colors.stroke}
-            strokeWidth={strokeWidth + 4}
+            strokeWidth={strokeWidth + 3}
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
-            opacity={0.28}
+            opacity={0.32}
+            filter={`url(#${filterId})`}
             style={{
               transition:
                 "stroke-dashoffset 1500ms cubic-bezier(0.22, 1, 0.36, 1)",
-              filter: `blur(${primary ? 8 : 6}px)`,
             }}
           />
 
@@ -657,9 +674,15 @@ function LoadingRing({
   strokeWidth: number;
   primary?: boolean;
 }) {
+  const filterId = useId().replace(/:/g, "");
+
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const dash = circumference * 0.28;
+
+  const color = primary
+    ? "#8b5cf6"
+    : "#6a87ff";
 
   return (
     <div className="flex flex-col items-center">
@@ -683,46 +706,72 @@ function LoadingRing({
         <svg
           width={size}
           height={size}
-          className="-rotate-90 animate-spin"
-          style={{
-            animationDuration: primary
-              ? "1.8s"
-              : "1.5s",
-          }}
+          className="-rotate-90 overflow-visible"
         >
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="transparent"
-            stroke={primary ? "#8b5cf6" : "#6a87ff"}
-            strokeWidth={strokeWidth + 4}
-            strokeLinecap="round"
-            strokeDasharray={`${dash} ${circumference}`}
-            strokeDashoffset={0}
-            opacity={0.28}
-            style={{
-              filter: `blur(${primary ? 8 : 6}px)`,
-            }}
-          />
+          <defs>
+            <filter
+              id={filterId}
+              x="-50%"
+              y="-50%"
+              width="200%"
+              height="200%"
+            >
+              <feGaussianBlur
+                stdDeviation={primary ? 5 : 4}
+              />
+            </filter>
+          </defs>
 
           <circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             fill="transparent"
-            stroke={primary ? "#8b5cf6" : "#6a87ff"}
+            stroke="#12233b"
             strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={`${dash} ${circumference}`}
-            strokeDashoffset={0}
           />
+
+          <g
+            className="animate-spin"
+            style={{
+              transformOrigin: "center",
+              animationDuration: primary
+                ? "1.8s"
+                : "1.5s",
+            }}
+          >
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="transparent"
+              stroke={color}
+              strokeWidth={strokeWidth + 3}
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${circumference}`}
+              opacity={0.32}
+              filter={`url(#${filterId})`}
+            />
+
+            <circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              fill="transparent"
+              stroke={color}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={`${dash} ${circumference}`}
+            />
+          </g>
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className={`font-bold tracking-tight text-[#f5f8fe] ${
-              primary ? "text-4xl" : "text-2xl"
+              primary
+                ? "text-4xl"
+                : "text-2xl"
             }`}
           >
             ...
