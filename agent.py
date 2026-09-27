@@ -1,5 +1,4 @@
 from agents import Agent
-from tools import get_resume
 from models import JobRequirements,ResumeAssessment, ClarificationQuestions, CandidateAssessment
 
 
@@ -57,7 +56,10 @@ resume_agent = Agent(
     instructions="""
         You compare a candidate's resume against a set of job requirements.
 
-        You must use the resume provided by the get_resume tool.
+        The candidate's resume text and the job requirements will be provided
+        directly in the input.
+
+        Use only the provided resume text as evidence about the candidate.
 
         For every job requirement, classify the resume evidence as:
 
@@ -91,7 +93,6 @@ resume_agent = Agent(
         - Do not calculate a fit score.
         - Do not make an application recommendation.
         """,
-    tools=[get_resume],
     output_type=ResumeAssessment,
 )
 

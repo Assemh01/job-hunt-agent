@@ -88,9 +88,27 @@ async def health():
     "/analyze",
     response_model=JobAnalysisResult,
 )
-async def analyze(request: JobAnalysisRequest):
+async def analyze(
+    request: JobAnalysisRequest,
+    db: Session = Depends(get_db),
+):
+    profile = db.get(ProfileDB, request.profile_id)
+
+    if profile is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Profile not found.",
+        )
+
+    if not profile.resume_text:
+        raise HTTPException(
+            status_code=400,
+            detail="This profile does not have a resume.",
+        )
+
     return await analyze_job(
-        request.job_description
+        request.job_description,
+        profile.resume_text,
     )
 
 

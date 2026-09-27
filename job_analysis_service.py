@@ -26,7 +26,11 @@ from scoring import (
 )
 
 
-async def analyze_job(job_description: str) -> JobAnalysisResult:
+async def analyze_job(
+    job_description: str,
+    resume_text: str,
+) -> JobAnalysisResult:
+    
     requirements_result = await Runner.run(
         requirements_agent,
         job_description,
@@ -35,10 +39,14 @@ async def analyze_job(job_description: str) -> JobAnalysisResult:
     requirements = requirements_result.final_output
 
     assessment_input = f"""
-    Analyze the candidate's resume against these job requirements:
+        Candidate resume:
 
-    {requirements.model_dump_json(indent=2)}
-    """
+        {resume_text}
+
+        Job requirements:
+
+        {requirements.model_dump_json(indent=2)}
+        """
 
     resume_result = await Runner.run(
         resume_agent,
