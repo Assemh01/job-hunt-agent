@@ -32,7 +32,7 @@ class JobInfo(BaseModel):
     workplace_type: str | None = None
 
 class JobRequirements(BaseModel):
-    job_info = JobInfo
+    job_info : JobInfo
     requirements: list[JobRequirement]
 
 class MatchLevel(str, Enum):
@@ -120,8 +120,18 @@ class JobAnalysisResult(BaseModel):
     hard_gates: HardGateResult | None = None
 
 class JobAnalysisRequest(BaseModel):
+    profile_id: int
     job_description: str
 
 class ClarificationSubmission(BaseModel):
     analysis: JobAnalysisResult
     answers: ClarificationAnswers
+
+class ProfileCreate(BaseModel):
+    name: str
+
+class ProfileResponse(BaseModel):
+    id: int
+    name: str
+    resume_filename: str | None = None
+    has_resume: bool = False
