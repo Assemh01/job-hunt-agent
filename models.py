@@ -100,3 +100,20 @@ class HardGateAssessment(BaseModel):
 
 class HardGateResult(BaseModel):
     gates: list[HardGateAssessment] = Field(default_factory=list)
+
+class JobAnalysisResult(BaseModel):
+    requirements: JobRequirements
+    resume_assessment: ResumeAssessment
+    resume_score: FitScore
+    clarification_questions: ClarificationQuestions
+
+    candidate_assessment: CandidateAssessment | None = None
+    candidate_score: FitScore | None = None
+    hard_gates: HardGateResult | None = None
+
+class JobAnalysisRequest(BaseModel):
+    job_description: str
+
+class ClarificationSubmission(BaseModel):
+    analysis: JobAnalysisResult
+    answers: ClarificationAnswers

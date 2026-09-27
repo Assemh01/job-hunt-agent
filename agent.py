@@ -101,7 +101,13 @@ clarification_agent = Agent(
         proficiency from 1 to 5.
 
         - years:
-        Use when the requirement includes a duration or minimum years of experience.
+        Use only when the original requirement explicitly includes a numerical
+        duration or minimum years of experience.
+
+        If the requirement only asks whether the candidate has experience,
+        without specifying a duration, use yes_no instead.
+        Do not introduce a years-of-experience threshold that is not present
+        in the original requirement.
 
         - text:
         Use only when the requirement cannot be clarified adequately using
