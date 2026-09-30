@@ -43,9 +43,18 @@ type HardGate = {
   reasoning: string;
 };
 
+type JobInfo = {
+  company_name: string | null;
+  job_title: string | null;
+  location: string | null;
+  salary: string | null;
+  employment_type: string | null;
+  workplace_type: string | null;
+};
+
 type JobAnalysisResult = {
   requirements: {
-    job_title: string | null;
+    job_info: JobInfo;
     requirements: Requirement[];
   };
 
@@ -72,6 +81,13 @@ type JobAnalysisResult = {
 
 type AnswerValue = string | number | boolean;
 
+type Profile = {
+  id: number;
+  name: string;
+  resume_filename: string | null;
+  has_resume: boolean;
+};
+
 const MIN_ANALYZE_LOADING_MS = 1400;
 const MIN_CANDIDATE_LOADING_MS = 1400;
 
@@ -87,6 +103,59 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [selectedProfileId, setSelectedProfileId] =
+    useState<number | null>(null);
+
+  const [profilesLoading, setProfilesLoading] =
+    useState(true);
+
+  const [newProfileName, setNewProfileName] =
+    useState("");
+
+  const [creatingProfile, setCreatingProfile] =
+    useState(false);
+
+  const selectedProfile =
+    profiles.find(
+      (profile) => profile.id === selectedProfileId
+    ) ?? null;
+
+  const [uploadingResume, setUploadingResume] =
+  useState(false);
+
+  useEffect(() => {
+    async function loadProfiles() {
+      try {
+        const response = await fetch(
+          "http://127.0.0.1:8000/profiles"
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to load profiles.");
+        }
+
+        const data: Profile[] = await response.json();
+
+        setProfiles(data);
+
+        if (data.length > 0) {
+          setSelectedProfileId(data[0].id);
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load profiles."
+        );
+      } finally {
+        setProfilesLoading(false);
+      }
+    }
+
+    loadProfiles();
+  }, []);
 
   async function waitForMinimumTime(
     startedAt: number,
@@ -104,8 +173,151 @@ export default function Home() {
       );
     }
   }
+  async function handleResumeUpload(file: File) {
+    if (!selectedProfileId) {
+      setError("Please select a profile first.");
+      return;
+    }
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setError("Resume must be a PDF.");
+      return;
+    }
+
+    const maxSize = 10 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setError("PDF must be smaller than 10 MB.");
+      return;
+    }
+
+    setUploadingResume(true);
+    setError("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:8000/profiles/${selectedProfileId}/resume`,
+        {
+          method: "PUT",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        let message = "Failed to upload resume.";
+
+        try {
+          const data = await response.json();
+
+          if (typeof data.detail === "string") {
+            message = data.detail;
+          }
+        } catch {
+          // Keep default message.
+        }
+
+        throw new Error(message);
+      }
+
+      const updatedProfile: Profile =
+        await response.json();
+
+      setProfiles((current) =>
+        current.map((profile) =>
+          profile.id === updatedProfile.id
+            ? updatedProfile
+            : profile
+        )
+      );
+
+      setAnalysis(null);
+      setAnswers({});
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to upload resume."
+      );
+    } finally {
+      setUploadingResume(false);
+    }
+  }
+  async function handleCreateProfile() {
+    const name = newProfileName.trim();
+
+    if (!name) {
+      setError("Please enter a profile name.");
+      return;
+    }
+
+    setCreatingProfile(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/profiles",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create profile.");
+      }
+
+      const profile: Profile = await response.json();
+
+      setProfiles((current) => [
+        ...current,
+        profile,
+      ]);
+
+      setSelectedProfileId(profile.id);
+      setNewProfileName("");
+
+      setAnalysis(null);
+      setAnswers({});
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to create profile."
+      );
+    } finally {
+      setCreatingProfile(false);
+    }
+  }
+
+  function handleProfileChange(profileId: number) {
+    setSelectedProfileId(profileId);
+
+    setAnalysis(null);
+    setAnswers({});
+    setError("");
+  }
 
   async function handleAnalyze() {
+    if (!selectedProfileId) {
+      setError("Please select a profile.");
+      return;
+    }
+
+    if (!selectedProfile?.has_resume) {
+      setError(
+        "The selected profile does not have a resume."
+      );
+      return;
+    }
+
     if (!jobDescription.trim()) {
       setError("Please enter a job description.");
       return;
@@ -127,6 +339,7 @@ export default function Home() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            profile_id: selectedProfileId,
             job_description: jobDescription,
           }),
         }
@@ -179,12 +392,14 @@ export default function Home() {
   }
 
   async function handleSubmitClarifications() {
-    if (!analysis) {
+    if (!analysis || !selectedProfileId) {
       return;
     }
 
     if (!allQuestionsAnswered()) {
-      setError("Please answer every clarification question.");
+      setError(
+        "Please answer every clarification question."
+      );
       return;
     }
 
@@ -211,6 +426,7 @@ export default function Home() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            profile_id: selectedProfileId,
             analysis,
             answers: {
               answers: clarificationAnswers,
@@ -264,6 +480,202 @@ export default function Home() {
           </p>
         </header>
 
+        <section className="mb-8 rounded-2xl border border-[#19304d] bg-[#071321] p-6 shadow-xl shadow-black/30 md:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#6a87ff]">
+                Candidate Profile
+              </p>
+
+              <h2 className="mt-2 text-xl font-semibold text-[#f5f8fe]">
+                Select Profile
+              </h2>
+
+              <p className="mt-1 text-sm text-[#7f93af]">
+                Choose which resume and saved candidate
+                information should be used for job analysis.
+              </p>
+
+              <select
+                value={selectedProfileId ?? ""}
+                onChange={(event) =>
+                  handleProfileChange(
+                    Number(event.target.value)
+                  )
+                }
+                disabled={
+                  profilesLoading ||
+                  profiles.length === 0
+                }
+                className="mt-4 w-full rounded-xl border border-[#314866] bg-[#111f31] px-4 py-3 text-[#edf2fb] outline-none transition focus:border-[#6a87ff] focus:ring-2 focus:ring-[#6a87ff]/15 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {profilesLoading && (
+                  <option value="">
+                    Loading profiles...
+                  </option>
+                )}
+
+                {!profilesLoading &&
+                  profiles.length === 0 && (
+                    <option value="">
+                      No profiles yet
+                    </option>
+                  )}
+
+                {profiles.map((profile) => (
+                  <option
+                    key={profile.id}
+                    value={profile.id}
+                  >
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex-1">
+              <p className="text-sm font-medium text-[#9eb0c8]">
+                Create a new profile
+              </p>
+
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="text"
+                  value={newProfileName}
+                  onChange={(event) =>
+                    setNewProfileName(
+                      event.target.value
+                    )
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      handleCreateProfile();
+                    }
+                  }}
+                  placeholder="Profile name"
+                  className="flex-1 rounded-xl border border-[#314866] bg-[#111f31] px-4 py-3 text-[#edf2fb] outline-none transition placeholder:text-[#7288a3] focus:border-[#6a87ff] focus:ring-2 focus:ring-[#6a87ff]/15"
+                />
+
+                <button
+                  type="button"
+                  onClick={handleCreateProfile}
+                  disabled={
+                    creatingProfile ||
+                    !newProfileName.trim()
+                  }
+                  className="rounded-xl border border-[#425d83] bg-[#10223a] px-5 py-3 font-semibold text-[#dce8f7] transition hover:border-[#6a87ff] hover:bg-[#142b48] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {creatingProfile
+                    ? "Creating..."
+                    : "Create Profile"}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {selectedProfile && (
+            <div className="mt-6 rounded-xl border border-[#263f60] bg-[#0b1828] p-5">
+              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7188a7]">
+                    Active Profile
+                  </p>
+
+                  <p className="mt-1 font-semibold text-[#f5f8fe]">
+                    {selectedProfile.name}
+                  </p>
+
+                  {selectedProfile.resume_filename ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#12243a] text-sm text-[#8eb1ff]">
+                        PDF
+                      </span>
+
+                      <div>
+                        <p className="text-sm text-[#b7c7da]">
+                          {selectedProfile.resume_filename}
+                        </p>
+
+                        <p className="text-xs text-[#667d9a]">
+                          Resume ready for analysis
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-[#8195af]">
+                      No resume has been uploaded yet.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex flex-col items-start gap-3 sm:items-end">
+                  <span
+                    className={`w-fit rounded-full border px-3 py-1.5 text-xs font-medium ${
+                      selectedProfile.has_resume
+                        ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
+                        : "border-amber-400/20 bg-amber-500/10 text-amber-300"
+                    }`}
+                  >
+                    {selectedProfile.has_resume
+                      ? "Resume uploaded"
+                      : "No resume"}
+                  </span>
+
+                  <label
+                    className={`cursor-pointer rounded-xl border border-[#425d83] bg-[#10223a] px-4 py-2.5 text-sm font-semibold text-[#dce8f7] transition hover:border-[#6a87ff] hover:bg-[#142b48] ${
+                      uploadingResume
+                        ? "pointer-events-none opacity-50"
+                        : ""
+                    }`}
+                  >
+                    {uploadingResume
+                      ? "Processing Resume..."
+                      : selectedProfile.has_resume
+                      ? "Replace Resume"
+                      : "Upload Resume"}
+
+                    <input
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      className="hidden"
+                      disabled={uploadingResume}
+                      onChange={(event) => {
+                        const file =
+                          event.target.files?.[0];
+
+                        if (file) {
+                          void handleResumeUpload(file);
+                        }
+
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {uploadingResume && (
+                <div className="mt-5 border-t border-[#213753] pt-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#334d70] border-t-[#6a87ff]" />
+
+                    <div>
+                      <p className="text-sm font-medium text-[#c9d7e8]">
+                        Reading and parsing resume...
+                      </p>
+
+                      <p className="mt-0.5 text-xs text-[#7187a3]">
+                        Extracting your experience, skills,
+                        education, and certifications.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+
         <section className="rounded-2xl border border-[#19304d] bg-[#071321] p-6 shadow-2xl shadow-black/30 md:p-8">
           <div className="mb-5">
             <h2 className="text-xl font-semibold text-[#f5f8fe]">
@@ -285,6 +697,17 @@ export default function Home() {
             className="min-h-72 w-full resize-y rounded-xl border border-[#172a45] bg-[#020917] p-5 text-[#edf2fb] outline-none transition placeholder:text-[#556882] focus:border-[#6a87ff] focus:ring-2 focus:ring-[#6a87ff]/15"
           />
 
+          {selectedProfile &&
+            !selectedProfile.has_resume && (
+              <div className="mt-4 rounded-lg border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                Upload a resume for{" "}
+                <span className="font-semibold">
+                  {selectedProfile.name}
+                </span>{" "}
+                before analyzing a job.
+              </div>
+            )}
+
           {error && (
             <div className="mt-4 rounded-lg border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
               {error}
@@ -293,10 +716,16 @@ export default function Home() {
 
           <button
             onClick={handleAnalyze}
-            disabled={loading}
-            className="mt-5 rounded-xl bg-[#6a87ff] px-6 py-3 font-semibold text-white transition hover:bg-[#8098ff] disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={
+              loading ||
+              !selectedProfile ||
+              !selectedProfile.has_resume
+            }
+            className="mt-5 rounded-xl bg-[#6a87ff] px-6 py-3 font-semibold text-white transition hover:bg-[#8098ff] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {loading ? "Analyzing..." : "Analyze Job"}
+            {loading
+              ? "Analyzing..."
+              : "Analyze Job"}
           </button>
         </section>
 
@@ -312,9 +741,8 @@ export default function Home() {
             <ScoreSection
               title="Resume Fit"
               score={analysis.resume_score}
-              jobTitle={analysis.requirements.job_title}
+              jobInfo={analysis.requirements.job_info}
             />
-
             {!analysis.candidate_assessment &&
               analysis.clarification_questions.questions
                 .length > 0 && (
@@ -343,7 +771,10 @@ export default function Home() {
                           question={question}
                           value={answers[index]}
                           onChange={(value) =>
-                            updateAnswer(index, value)
+                            updateAnswer(
+                              index,
+                              value
+                            )
                           }
                         />
                       )
@@ -374,19 +805,23 @@ export default function Home() {
               />
             )}
 
-            {analysis.candidate_score && !submitting && (
-              <ScoreSection
-                title="Candidate Fit"
-                score={analysis.candidate_score}
-                jobTitle={analysis.requirements.job_title}
-              />
-            )}
+            {analysis.candidate_score &&
+              !submitting && (
+                <ScoreSection
+                  title="Candidate Fit"
+                  score={analysis.candidate_score}
+                  jobInfo={analysis.requirements.job_info}
+                />
+              )}
 
-            {analysis.hard_gates && !submitting && (
-              <HardGatesSection
-                gates={analysis.hard_gates.gates}
-              />
-            )}
+            {analysis.hard_gates &&
+              !submitting && (
+                <HardGatesSection
+                  gates={
+                    analysis.hard_gates.gates
+                  }
+                />
+              )}
           </>
         )}
       </div>
@@ -397,24 +832,52 @@ export default function Home() {
 function ScoreSection({
   title,
   score,
-  jobTitle,
+  jobInfo,
 }: {
   title: string;
   score: FitScore;
-  jobTitle: string | null;
+  jobInfo: JobInfo;
 }) {
+  const jobMeta = [
+    jobInfo.location,
+    jobInfo.salary,
+    jobInfo.employment_type,
+    jobInfo.workplace_type,
+  ].filter(Boolean);
+
   return (
     <section className="mt-8 overflow-hidden rounded-2xl border border-[#19304d] bg-[#071321] shadow-xl shadow-black/30">
       <div className="border-b border-[#19304d] bg-[#091827] px-6 py-5 md:px-8">
-        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-[#6a87ff]">
               {title}
             </p>
 
-            <h2 className="mt-2 text-2xl font-semibold text-[#f5f8fe]">
-              {jobTitle ?? "Job Analysis"}
-            </h2>
+            <div className="mt-2">
+              <h2 className="text-2xl font-semibold text-[#f5f8fe]">
+                {jobInfo.job_title ?? "Job Analysis"}
+              </h2>
+
+              {jobInfo.company_name && (
+                <p className="mt-1 text-base font-medium text-[#9eb0c8]">
+                  {jobInfo.company_name}
+                </p>
+              )}
+            </div>
+
+            {jobMeta.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {jobMeta.map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-lg border border-[#263f60] bg-[#0c1b2d] px-3 py-1.5 text-xs font-medium text-[#91a8c4]"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           <p className="text-sm text-[#7f93af]">

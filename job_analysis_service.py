@@ -89,12 +89,21 @@ async def analyze_job(
     else:
         clarification_questions = ClarificationQuestions()
 
-    return JobAnalysisResult(
+    analysis = JobAnalysisResult(
         requirements=requirements,
         resume_assessment=resume_assessment,
         resume_score=resume_score,
         clarification_questions=clarification_questions,
     )
+
+    if not clarification_questions.questions:
+        return await complete_job_analysis(
+            analysis,
+            ClarificationAnswers(),
+            profile_facts,
+        )
+
+    return analysis
 
 
 async def complete_job_analysis(
