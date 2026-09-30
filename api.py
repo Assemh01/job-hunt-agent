@@ -60,6 +60,29 @@ def profile_to_response(profile: ProfileDB) -> ProfileResponse:
         has_resume=profile.resume_text is not None,
     )
 
+def load_profile_facts(
+        profile_id: int,
+        db:Session
+) -> list[ProfileFact]:
+    facts = (
+        db.query(ProfileFactDB)
+        .filter(ProfileFactDB.profile_id == profile_id)
+        .order_by(ProfileFactDB.id)
+        .all()
+    )
+
+    return [
+        ProfileFact(
+            key = fact.key,
+            statement=fact.statement,
+            value = json.loads(fact.value_json),
+            response_type = QuestionType(
+                fact.response_type
+            ),
+        )
+        for fact in facts
+    ]
+
 def extract_pdf_text(pdf_bytes: bytes) -> str:
     try:
         with pymupdf.open(
@@ -114,9 +137,15 @@ async def analyze(
             detail="This profile does not have a resume.",
         )
 
+    profile_facts = load_profile_facts(
+        profile.id,
+        db,
+    )
+
     return await analyze_job(
         request.job_description,
         profile.resume_text,
+        profile_facts,
     )
 
 
@@ -139,9 +168,15 @@ async def submit_clarifications(
             detail="Profile not found.",
         )
 
+    profile_facts = load_profile_facts(
+        profile.id, 
+        db,
+    )
+
     completed_analysis = await complete_job_analysis(
         submission.analysis,
         submission.answers,
+        profile_facts,
     )
 
     fact_inputs = []
@@ -414,23 +449,7 @@ def get_profile_facts(
             detail="Profile not found.",
         )
 
-    facts = (
-        db.query(ProfileFactDB)
-        .filter(
-            ProfileFactDB.profile_id == profile_id
-        )
-        .order_by(ProfileFactDB.id)
-        .all()
+    return load_profile_facts(
+        profile_id,
+        db,
     )
-
-    return [
-        ProfileFact(
-            key=fact.key,
-            statement=fact.statement,
-            value=json.loads(fact.value_json),
-            response_type=QuestionType(
-                fact.response_type
-            ),
-        )
-        for fact in facts
-    ]

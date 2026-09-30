@@ -104,13 +104,29 @@ resume_agent = Agent(
 )
 
 clarification_agent = Agent(
-    name = "Candidate Clarification Agent",
-    instructions = """
+    name="Candidate Clarification Agent",
+    instructions="""
         You generate follow-up questions for job requirements that could not
         be fully established from the candidate's resume.
 
-        For each unresolved requirement, ask a concise question that will help
-        determine whether the candidate actually satisfies the requirement.
+        You will receive:
+        1. Unresolved job requirements.
+        2. Reusable profile facts previously confirmed by the candidate.
+
+        Before generating a question for an unresolved requirement, check
+        whether a profile fact clearly resolves that requirement.
+
+        If a profile fact clearly provides the necessary information:
+        - Do not generate a clarification question for that requirement.
+        - A negative fact can also resolve a requirement.
+        - Do not ignore a fact merely because it means the candidate does not
+          satisfy the requirement.
+
+        Only use a profile fact when it clearly corresponds to the requirement.
+        Do not stretch, generalize, or infer unrelated facts.
+
+        For each requirement that is still unresolved, ask a concise question
+        that will help determine whether the candidate actually satisfies it.
 
         Choose the most appropriate response type:
 
@@ -128,8 +144,6 @@ clarification_agent = Agent(
 
         If the requirement only asks whether the candidate has experience,
         without specifying a duration, use yes_no instead.
-        Do not introduce a years-of-experience threshold that is not present
-        in the original requirement.
 
         - text:
         Use only when the requirement cannot be clarified adequately using
@@ -138,27 +152,17 @@ clarification_agent = Agent(
         - choice:
         Use when a requirement can be satisfied through multiple distinct
         alternatives and knowing which alternative applies matters.
-        Provide clear choices representing the valid pathways.
-
-        Do not use yes_no for an "A or B" requirement when a yes answer
-        would leave it unclear which condition the candidate satisfies.
-        Use choice instead.
 
         Every question must be understandable on its own.
-        Do not use vague phrases such as "this requirement" or "this qualification".
-        Explicitly name the relevant skill, qualification, or condition in the question.
 
-        Do not make a requirement stricter or narrower than the original job description.
-        Preserve distinctions such as professional experience, academic experience,
-        project experience, familiarity, and hands-on experience exactly as stated.
+        Do not make a requirement stricter or narrower than the original job
+        description.
 
-        Do not assume that something missing from the resume means the candidate
-        does not have it.
-
+        Do not invent candidate information.
         Do not calculate fit scores.
-        Do not answer the questions yourself.
-        Do not invent candidate information.""",
-        output_type= ClarificationQuestions
+        Do not answer questions yourself.
+    """,
+    output_type=ClarificationQuestions,
 )
 
 candidate_agent = Agent(
@@ -168,7 +172,17 @@ candidate_agent = Agent(
 
         You will receive:
         1. A resume assessment for every requirement.
-        2. Candidate answers to clarification questions for unresolved requirements.
+        2. Reusable profile facts previously confirmed by the candidate.
+        3. Candidate answers to clarification questions for the current job.
+
+        Use all three sources when evaluating each requirement.
+
+        A relevant reusable profile fact can establish whether a requirement is
+        satisfied or not satisfied even when the resume does not contain that
+        information.
+
+        Current clarification answers take precedence over previously stored profile
+        facts when they directly address the same information.
 
         For every requirement:
 
@@ -250,8 +264,12 @@ resume_parser_agent = Agent(
 profile_fact_agent = Agent(
     name="Profile Fact Extractor",
     instructions="""
-        You determine whether a candidate's clarification answer represents
-        reusable information about the candidate.
+        You determine which candidate clarification answers represent reusable
+        information about the candidate.
+
+        You will receive multiple clarification answers.
+
+        Return one decision for each clarification answer.
 
         You will receive:
         - the job requirement

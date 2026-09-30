@@ -13,6 +13,7 @@ from models import (
     JobAnalysisResult,
     ClarificationAnswers,
     ClarificationQuestions,
+    ProfileFact,
 )
 
 from assessment_utils import (
@@ -29,6 +30,7 @@ from scoring import (
 async def analyze_job(
     job_description: str,
     resume_text: str,
+    profile_facts: list[ProfileFact],
 ) -> JobAnalysisResult:
     
     requirements_result = await Runner.run(
@@ -68,7 +70,11 @@ async def analyze_job(
             "unresolved_requirements": [
                 item.model_dump(mode="json")
                 for item in unresolved
-            ]
+            ],
+            "profile_facts": [
+                fact.model_dump(mode = "json")
+                for fact in profile_facts
+            ],
         }
 
         clarification_result = await Runner.run(
@@ -94,15 +100,26 @@ async def analyze_job(
 async def complete_job_analysis(
     analysis: JobAnalysisResult,
     answers: ClarificationAnswers,
+    profile_facts: list[ProfileFact],
 ) -> JobAnalysisResult:
     candidate_input = f"""
-    Resume assessment:
+        Resume assessment:
 
-    {analysis.resume_assessment.model_dump_json(indent=2)}
+        {analysis.resume_assessment.model_dump_json(indent=2)}
 
-    Candidate clarification answers:
+        Previously confirmed reusable profile facts:
 
-    {answers.model_dump_json(indent=2)}
+        {json.dumps(
+            [
+                fact.model_dump(mode="json")
+                for fact in profile_facts
+            ],
+            indent=2,
+        )}
+
+        Candidate clarification answers for this job:
+
+        {answers.model_dump_json(indent=2)}
     """
 
     candidate_result = await Runner.run(
