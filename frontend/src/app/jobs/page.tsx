@@ -238,11 +238,6 @@ async function handleDeleteJob() {
                       <h2 className="mt-2 text-xl font-semibold text-[#f5f8fe]">
                         {job.job_title ?? "Job title unavailable"}
                       </h2>
-                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm text-[#8ea1bd]">
-                            {job.location ?? "Location not specified"}
-                        </p>
-                    </div>
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-2xl font-bold text-[#c4e879]">
