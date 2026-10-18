@@ -124,6 +124,10 @@ export default function Home() {
 
   const [uploadingResume, setUploadingResume] =
   useState(false);
+  
+  const [savingJob, setSavingJob] = useState(false);
+  const [savedJobId, setSavedJobId] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     async function loadProfiles() {
@@ -303,6 +307,8 @@ export default function Home() {
     setAnalysis(null);
     setAnswers({});
     setError("");
+    setSavedJobId(null);
+    setSaveError("");
   }
 
   async function handleAnalyze() {
@@ -327,6 +333,8 @@ export default function Home() {
     setError("");
     setAnalysis(null);
     setAnswers({});
+    setSavedJobId(null);
+    setSaveError("");
 
     const startedAt = performance.now();
 
@@ -458,6 +466,48 @@ export default function Home() {
       );
     } finally {
       setSubmitting(false);
+    }
+  }
+  
+  async function handleSaveJob() {
+    if (!analysis || !selectedProfileId) return;
+
+    setSavingJob(true);
+    setSaveError("");
+
+    try {
+      const jobInfo = analysis.requirements.job_info;
+
+      const response = await fetch(
+        `http://127.0.0.1:8000/profiles/${selectedProfileId}/jobs`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...jobInfo,
+            job_description: jobDescription,
+            analysis,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to save job.");
+      }
+
+      const savedJob = await response.json();
+
+      setSavedJobId(savedJob.id);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong."
+      );
+    } finally {
+      setSavingJob(false);
     }
   }
 
@@ -690,9 +740,13 @@ export default function Home() {
           <textarea
             suppressHydrationWarning
             value={jobDescription}
-            onChange={(event) =>
-              setJobDescription(event.target.value)
-            }
+            onChange={(event) => {
+              setJobDescription(event.target.value);
+              setAnalysis(null);
+              setAnswers({});
+              setSavedJobId(null);
+              setSaveError("");
+            }}
             placeholder="Paste the full job description here..."
             className="min-h-72 w-full resize-y rounded-xl border border-[#172a45] bg-[#020917] p-5 text-[#edf2fb] outline-none transition placeholder:text-[#556882] focus:border-[#6a87ff] focus:ring-2 focus:ring-[#6a87ff]/15"
           />
@@ -742,6 +796,32 @@ export default function Home() {
               title="Resume Fit"
               score={analysis.resume_score}
               jobInfo={analysis.requirements.job_info}
+              action={
+                <div className="flex flex-col items-start gap-2 sm:items-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveJob}
+                    disabled={savingJob || savedJobId !== null}
+                    className={`rounded-xl border px-5 py-2.5 text-sm font-semibold transition ${
+                      savedJobId !== null
+                        ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-300"
+                        : "border-[#536fe0] bg-[#243b83] text-[#e5ebff] hover:border-[#7893ff] hover:bg-[#304a9a]"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    {savingJob
+                      ? "Saving..."
+                      : savedJobId !== null
+                        ? "✓ Saved"
+                        : "Save Job"}
+                  </button>
+
+                  {saveError && (
+                    <p className="text-xs text-red-400">
+                      {saveError}
+                    </p>
+                  )}
+                </div>
+              }
             />
             {!analysis.candidate_assessment &&
               analysis.clarification_questions.questions
@@ -833,10 +913,12 @@ function ScoreSection({
   title,
   score,
   jobInfo,
+  action,
 }: {
   title: string;
   score: FitScore;
   jobInfo: JobInfo;
+  action?: ReactNode;
 }) {
   const jobMeta = [
     jobInfo.location,
@@ -879,10 +961,7 @@ function ScoreSection({
               </div>
             )}
           </div>
-
-          <p className="text-sm text-[#7f93af]">
-            Match breakdown
-          </p>
+          {action}
         </div>
       </div>
 
