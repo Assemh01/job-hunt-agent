@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text, Float
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database import Base
@@ -101,6 +101,78 @@ class ProfileFactDB(Base):
     response_type: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class SavedJobDB(Base):
+    __tablename__ = "saved_jobs"
+
+    id: Mapped[int] = mapped_column(
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    profile_id: Mapped[int] = mapped_column(
+        ForeignKey("profiles.id"),
+        nullable=False,
+        index=True,
+    )
+
+    company_name: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    job_title: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    location: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    salary: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
+    employment_type: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    workplace_type: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    job_description: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    application_status: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        default="saved",
+    )
+
+    analysis_json: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(

@@ -1,5 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 class RequirementPriority(str, Enum):
     REQUIRED = "required"
@@ -174,3 +175,51 @@ class ProfileFactDecision(BaseModel):
 
 class ProfileFactDecisions(BaseModel):
     decisions: list[ProfileFactDecision] = Field(default_factory=list)
+
+class ApplicationStatus(str, Enum):
+    SAVED = "saved"
+    APPLIED = "applied"
+    INTERVIEW = "interview"
+    REJECTED = "rejected"
+    OFFER = "offer"
+
+class SavedJobCreate(BaseModel):
+    company_name: str | None = None
+    job_title: str | None = None
+    location: str | None = None
+    salary: str | None = None
+    employment_type: str | None = None
+    workplace_type: str | None = None
+
+    job_description: str = Field(min_length = 1)
+    analysis: JobAnalysisResult | None = None
+
+class SavedJobUpdate(BaseModel):
+    company_name: str | None = None
+    job_title: str | None = None
+    location: str | None = None
+    salary: str | None = None
+    employment_type: str | None = None
+    workplace_type: str | None = None
+
+    application_status: ApplicationStatus | None = None
+
+class SavedJobResponse(BaseModel):
+    id: int
+    profile_id: int
+
+    company_name: str | None = None
+    job_title: str | None = None
+    location: str | None = None
+    salary: str | None = None
+    employment_type: str | None = None
+    workplace_type: str | None = None
+
+    job_description: str
+    application_status : ApplicationStatus
+    analysis: JobAnalysisResult | None = None
+
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}

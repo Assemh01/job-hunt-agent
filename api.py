@@ -6,7 +6,7 @@ import pymupdf
 import json
 
 from database import Base, engine, get_db
-from db_models import ProfileDB, ResumeDataDB, ProfileFactDB
+from db_models import ProfileDB, ResumeDataDB, ProfileFactDB, SavedJobDB
 
 from agents import Runner
 from agent import resume_parser_agent, profile_fact_agent
@@ -23,7 +23,10 @@ from models import (
     ProfileResponse,
     ResumeData,
     ProfileFact,
-    QuestionType
+    QuestionType,
+    SavedJobCreate,
+    SavedJobResponse,
+    SavedJobUpdate,
 )
 
 from job_analysis_service import (
@@ -58,6 +61,29 @@ def profile_to_response(profile: ProfileDB) -> ProfileResponse:
         name=profile.name,
         resume_filename=profile.resume_filename,
         has_resume=profile.resume_text is not None,
+    )
+
+def saved_job_to_response(job:SavedJobDB) -> SavedJobResponse:
+    return SavedJobResponse(
+        id = job.id,
+        profile_id = job.profile_id,
+        company_name = job.company_name,
+        job_title = job.job_title,
+        location = job.location,
+        salary = job.salary,
+        employment_type = job.employment_type,
+        workplace_type = job.workplace_type,
+        job_description = job.job_description,
+        application_status = job.application_status,
+        analysis=(
+            JobAnalysisResult.model_validate_json(
+                job.analysis_json
+            )
+            if job.analysis_json
+            else None
+        ),
+        created_at = job.created_at,
+        updated_at = job.updated_at,
     )
 
 def load_profile_facts(
@@ -453,3 +479,139 @@ def get_profile_facts(
         profile_id,
         db,
     )
+
+@app.post(
+    "/profiles/{profile_id}/jobs",
+    response_model = SavedJobResponse,
+    status_code= 201,
+)
+def save_job(
+    profile_id: int,
+    job_data: SavedJobCreate,
+    db: Session = Depends(get_db),
+):
+    profile = db.get(ProfileDB, profile_id)
+
+    if profile is None:
+        raise HTTPException(
+            status_code= 404,
+            detail="Profile not found."
+        )
+    job = SavedJobDB(
+        profile_id=profile_id,
+        company_name=job_data.company_name,
+        job_title=job_data.job_title,
+        location=job_data.location,
+        salary=job_data.salary,
+        employment_type=job_data.employment_type,
+        workplace_type=job_data.workplace_type,
+        job_description=job_data.job_description,
+        application_status="saved",
+        analysis_json=(
+            job_data.analysis.model_dump_json()
+            if job_data.analysis
+            else None
+        ),
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    return saved_job_to_response(job)
+
+@app.get(
+    "/profiles/{profile_id}/jobs",
+    response_model=list[SavedJobResponse],
+)
+def list_saved_jobs(
+    profile_id: int,
+    db: Session = Depends(get_db),
+):
+    profile = db.get(ProfileDB, profile_id)
+
+    if profile is None:
+        raise HTTPException(
+            status_code= 404,
+            detail = "Profile not found",
+        )
+
+    jobs = (
+        db.query(SavedJobDB)
+        .filter(SavedJobDB.profile_id==profile_id)
+        .order_by(SavedJobDB.created_at.desc())
+        .all()
+    )
+
+    return [ 
+        saved_job_to_response(job)
+        for job in jobs
+    ]
+
+
+@app.get(
+    "/jobs/{job_id}",
+    response_model=SavedJobResponse,
+)
+def get_saved_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+):
+    job = db.get(SavedJobDB, job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Saved job not found.",
+        )
+
+    return saved_job_to_response(job)
+
+@app.patch(
+    "/jobs/{job_id}",
+    response_model=SavedJobResponse,
+)
+def update_saved_job(
+    job_id: int,
+    updates: SavedJobUpdate,
+    db: Session = Depends(get_db),
+):
+    job = db.get(SavedJobDB, job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code= 404,
+            detail = "Saved job not found.",
+        )
+
+    update_data = updates.model_dump(
+        exclude_unset = True,
+        mode = "json",
+    )
+
+    for field, value in update_data.items():
+        setattr(job, field, value)
+
+    db.commit()
+    db.refresh(job)
+
+    return saved_job_to_response(job)
+
+
+@app.delete(
+    "/jobs/{job_id}",
+    status_code=204,
+)
+def delete_saved_job(
+    job_id: int,
+    db: Session = Depends(get_db),
+):
+    job = db.get(SavedJobDB, job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Saved job not found.",
+        )
+
+    db.delete(job)
+    db.commit()
