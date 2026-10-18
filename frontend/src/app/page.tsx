@@ -7,6 +7,8 @@ import {
   type ReactNode,
 } from "react";
 
+import Link from "next/link";
+
 type Requirement = {
   name: string;
   description: string;
@@ -528,6 +530,16 @@ export default function Home() {
             missing information, and understand your true
             candidate fit.
           </p>
+            <Link
+              href={
+                selectedProfileId !== null
+                  ? `/jobs?profile_id=${selectedProfileId}`
+                  : "/jobs"
+              }
+              className="mt-6 inline-flex items-center rounded-xl border border-[#314866] bg-[#111f31] px-5 py-2.5 text-sm font-semibold text-[#dce8f7] transition hover:border-[#6a87ff] hover:bg-[#142b48]"
+            >
+              View Saved Jobs →
+            </Link>
         </header>
 
         <section className="mb-8 rounded-2xl border border-[#19304d] bg-[#071321] p-6 shadow-xl shadow-black/30 md:p-8">
